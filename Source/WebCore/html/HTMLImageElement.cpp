@@ -67,7 +67,6 @@
 #include "RenderImageResource.h"
 #include "RenderView.h"
 #include "RequestPriority.h"
-#include "ScriptController.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include "SizesAttributeParser.h"
@@ -414,11 +413,6 @@ void HTMLImageElement::selectImageSource(RelevantMutation relevantMutation)
         document->addDynamicMediaQueryDependentImage(*this);
 }
 
-bool HTMLImageElement::hasLazyLoadableAttributeValue(StringView attributeValue)
-{
-    return equalLettersIgnoringASCIICase(attributeValue, "lazy"_s);
-}
-
 bool HTMLImageElement::hasAutoSizesAttributeValue(StringView attributeValue)
 {
     return attributeValue.startsWithIgnoringASCIICase("auto"_s) && (attributeValue.length() == 4 || attributeValue[4] == ',');
@@ -468,7 +462,7 @@ void HTMLImageElement::attributeChanged(const QualifiedName& name, const AtomStr
         break;
     }
     case AttributeNames::loadingAttr:
-        if (!hasLazyLoadableAttributeValue(newValue))
+        if (!LazyLoading::hasLazyAttributeValue(newValue))
             loadDeferredImage();
         else if (!isConnected() && !m_imageLoader->image()) {
             // An eager-to-lazy transition before the element is connected may need to defer a
@@ -1106,9 +1100,7 @@ bool HTMLImageElement::isDeferred() const
 
 bool HTMLImageElement::isLazyLoadable() const
 {
-    if (!document().frame() || !protect(document().frame()->script())->canExecuteScripts(ReasonForCallingCanExecuteScripts::NotAboutToExecuteScript))
-        return false;
-    return hasLazyLoadableAttributeValue(attributeWithoutSynchronization(HTMLNames::loadingAttr));
+    return LazyLoading::isLazyLoadable(*this);
 }
 
 String HTMLImageElement::referrerPolicyForBindings() const
